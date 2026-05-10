@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vision</title>
+<style>
+  :root {
+    --accent: #a8a4e8;
+    --accent-deep: #8e89d0;
+    --accent-soft: rgba(168,164,232,0.15);
+    --accent-faint: rgba(168,164,232,0.08);
+    --bg: #272740;
+    --surface: #2e2e4a;
+    --text: #f2f0fc;
+    --text-muted: #c4c2dc;
+    --text-faint: #9290b0;
+    --border: rgba(168,164,232,0.18);
+    --border-mid: rgba(168,164,232,0.30);
+    --ep-border: rgba(168,164,232,0.28);
+    --ep-bg: rgba(168,164,232,0.08);
+    --ep-text: rgba(168,164,232,0.95);
+    --ep-sub: rgba(168,164,232,0.70);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%; overflow: hidden;
+  }
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.3s;
+  }
+  #app {
+    width: 100%; max-width: 520px;
+    height: 100vh; height: 100dvh;
+    overflow: hidden;
+    padding: 4rem 1.25rem 1.5rem;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .page { display: none; flex-direction: column; align-items: center; width: 100%; flex: 1; }
+  .page.active { display: flex; }
+  .flow-page { display: none; flex-direction: column; align-items: center; width: 100%; flex: 1; }
+  .flow-page.active { display: flex; }
+
+  /* WORDMARK — long-press target */
+  .wordmark {
+    font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 0; text-align: center;
+    cursor: default; user-select: none; position: relative; display: inline-block;
+    transition: color 0.3s;
+  }
+  .wordmark.holding { color: var(--accent); }
+  .wordmark-progress {
+    position: absolute; bottom: -4px; left: 0; height: 1px;
+    background: var(--accent); width: 0%; transition: none; border-radius: 1px;
+  }
+
+  .section-title { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 0.4rem; text-align: left; width: 100%; }
+
+  /* STAGES */
+  .stages { width: 100%; display: flex; flex-direction: column; gap: 4px; margin-bottom: 0.5rem; }
+  .stage-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 9px 16px; border: 1px solid var(--border); border-radius: 10px;
+    cursor: pointer; transition: all 0.2s; background: transparent; user-select: none;
+  }
+  .stage-row:hover { border-color: var(--border-mid); background: var(--accent-faint); }
+  .stage-row.done { border-color: var(--accent); background: var(--accent-soft); }
+  .stage-row.locked { cursor: default; }
+  .stage-row.locked:hover { border-color: var(--border); background: transparent; }
+  .stage-row.done.locked { border-color: var(--accent); background: var(--accent-soft); }
+
+  .stage-dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--text-faint); flex-shrink: 0; transition: all 0.2s; }
+  .stage-row.done .stage-dot { background: var(--accent); border-color: var(--accent); }
+
+  .stage-ring { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--text-faint); flex-shrink: 0; transition: all 0.25s; position: relative; }
+  .stage-ring::after { content: ''; position: absolute; top: 3px; left: 3px; width: 8px; height: 8px; border-radius: 50%; background: transparent; transition: background 0.25s; }
+  .stage-row.done .stage-ring { border-color: var(--accent); }
+  .stage-row.done .stage-ring::after { background: var(--accent); }
+
+  .stage-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .stage-name { font-size: 16px; font-family: 'Georgia', serif; color: var(--text-muted); transition: color 0.2s; font-style: italic; }
+  .stage-row.done .stage-name { color: var(--text); font-style: normal; }
+  .stage-time { font-size: 12px; color: var(--text-faint); font-style: italic; font-family: 'Georgia', serif; }
+
+  /* EMERGENCY */
+  .emergency-label { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ep-sub); margin-bottom: 0.4rem; text-align: left; width: 100%; }
+  .emergency-row { display: flex; gap: 10px; width: 100%; margin-bottom: 0.6rem; }
+  .emergency-btn {
+    flex: 1; padding: 11px 12px; border-radius: 10px;
+    border: 1px dashed var(--ep-border); background: var(--ep-bg);
+    color: var(--ep-text); cursor: pointer; font-family: inherit;
+    transition: all 0.2s; text-align: center; line-height: 1.5;
+  }
+  .emergency-btn:hover { border-color: var(--accent); background: var(--accent-faint); color: var(--text); }
+  .emergency-btn-title { font-size: 14px; display: block; margin-bottom: 2px; font-family: 'Georgia', serif; font-style: italic; }
+  .emergency-btn-sub { font-size: 11px; color: var(--ep-sub); letter-spacing: 0.07em; text-transform: uppercase; display: block; }
+
+  /* DAY DONE */
+  .day-done-btn {
+    width: 100%; padding: 13px; border-radius: 10px; border: 1px solid var(--border-mid);
+    background: transparent; color: var(--text-muted); font-size: 14px; letter-spacing: 0.06em;
+    cursor: pointer; font-family: inherit; transition: all 0.2s; margin-bottom: 0;
+  }
+  .day-done-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .day-done-btn.ready { border-color: var(--accent); color: var(--accent); background: var(--accent-faint); }
+
+  .divider { width: 100%; height: 1px; background: var(--border); margin: 0.4rem 0; }
+
+  /* STATS */
+  .stats-header { font-size: 14px; color: var(--text-muted); margin-bottom: 1.5rem; text-align: center; font-style: italic; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin-bottom: 1rem; }
+  .stat-card { padding: 18px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); text-align: center; }
+  .stat-number { font-size: 42px; color: var(--accent); font-family: 'Georgia', serif; line-height: 1; margin-bottom: 6px; }
+  .stat-label { font-size: 12px; color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase; line-height: 1.4; }
+  .stat-sub { font-size: 11px; color: var(--text-faint); margin-top: 4px; opacity: 0.7; }
+  .ep-stat-row { display: flex; gap: 10px; width: 100%; margin-bottom: 1rem; }
+  .ep-stat { flex: 1; padding: 14px 12px; border-radius: 10px; border: 1px solid var(--ep-border); background: var(--ep-bg); text-align: center; }
+  .ep-stat-num { font-size: 30px; color: var(--accent); font-family: 'Georgia', serif; line-height: 1; margin-bottom: 4px; }
+  .ep-stat-label { font-size: 11px; color: var(--ep-sub); letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.4; }
+  .stats-locked-note { font-size: 13px; color: var(--text-faint); font-style: italic; text-align: center; }
+
+  /* FLOW */
+  .flow-header { font-size: 14px; color: var(--text-muted); margin-bottom: 1.25rem; text-align: center; font-style: italic; }
+  .flow-card { width: 100%; padding: 28px 24px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); text-align: center; margin-bottom: 1.25rem; }
+  .flow-step-num { font-size: 11px; color: var(--text-faint); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 14px; }
+  .flow-step-text { font-size: 17px; color: var(--text); line-height: 1.8; font-style: italic; }
+  .flow-timer-wrap { margin-top: 20px; display: none; flex-direction: column; align-items: center; gap: 8px; }
+  .flow-timer-display { font-size: 30px; color: var(--accent); font-family: 'Georgia', serif; letter-spacing: -1px; }
+  .flow-timer-bar-wrap { width: 120px; height: 2px; background: var(--border); border-radius: 1px; }
+  .flow-timer-bar { height: 100%; background: var(--accent); border-radius: 1px; width: 0%; transition: width 1s linear; }
+  .flow-timer-btn { margin-top: 6px; font-size: 12px; color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; background: none; border: none; font-family: inherit; transition: color 0.15s; }
+  .flow-timer-btn:hover { color: var(--text-muted); }
+  .flow-next-btn {
+    width: 100%; padding: 13px; border-radius: 10px; border: 1px solid var(--border-mid);
+    background: transparent; color: var(--accent); font-size: 14px; letter-spacing: 0.08em;
+    cursor: pointer; font-family: inherit; transition: all 0.2s; margin-bottom: 1rem;
+  }
+  .flow-next-btn:hover { border-color: var(--accent); background: var(--accent-faint); }
+  .flow-cancel { font-size: 12px; color: var(--text-faint); cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase; background: none; border: none; font-family: inherit; transition: color 0.15s; }
+  .flow-cancel:hover { color: var(--text-muted); }
+
+  /* GLOBAL TOP BAR */
+  #global-top-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.9rem 1.25rem 0.6rem;
+    max-width: 520px; margin: 0 auto; left: 50%; transform: translateX(-50%);
+    width: 100%;
+  }
+  #global-top-bar .wordmark { margin-bottom: 0; }
+  .top-icons { display: flex; align-items: center; gap: 10px; position: relative; }
+  .icon-btn {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1.5px solid var(--border-mid); background: var(--surface);
+    cursor: pointer; transition: transform 0.15s; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted);
+  }
+  .icon-btn:hover { transform: scale(1.12); }
+  .icon-btn.palette { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .swatches {
+    display: none; flex-wrap: wrap; gap: 7px; justify-content: center;
+    max-width: 180px; position: absolute; top: calc(100% + 10px); right: 0;
+    background: var(--surface); border: 1px solid var(--border-mid);
+    border-radius: 10px; padding: 10px; z-index: 10;
+  }
+  .swatches.open { display: flex; }
+  .swatch { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s; }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.active { border-color: #fff; transform: scale(1.2); }
+
+  /* SETTINGS MODAL */
+  .settings-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65); z-index: 1000;
+    align-items: center; justify-content: center; padding: 1.5rem;
+  }
+  .settings-overlay.open { display: flex; }
+  .settings-modal {
+    background: var(--surface); border: 1px solid var(--border-mid);
+    border-radius: 14px; padding: 24px 20px; width: 100%; max-width: 340px;
+    max-height: 80vh; overflow-y: auto;
+  }
+  .settings-title {
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 20px; text-align: center;
+  }
+  .settings-section-label {
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 10px; margin-top: 18px;
+  }
+  .settings-section-label:first-of-type { margin-top: 0; }
+  .settings-section-sub {
+    font-size: 11px; color: var(--text-faint); font-style: italic;
+    margin-bottom: 10px; line-height: 1.5;
+  }
+  .stage-toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 0; border-bottom: 1px solid var(--border);
+  }
+  .stage-toggle-row:last-child { border-bottom: none; }
+  .stage-toggle-name { font-size: 14px; color: var(--text-muted); font-family: 'Georgia', serif; font-style: italic; }
+  .toggle-switch {
+    width: 36px; height: 20px; border-radius: 10px;
+    background: var(--border-mid); border: none; cursor: pointer;
+    position: relative; transition: background 0.2s; flex-shrink: 0;
+  }
+  .toggle-switch.on { background: var(--accent); }
+  .toggle-switch::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #fff; transition: transform 0.2s;
+  }
+  .toggle-switch.on::after { transform: translateX(16px); }
+
+  .reset-hour-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0;
+  }
+  .reset-hour-label { font-size: 14px; color: var(--text-muted); font-family: 'Georgia', serif; font-style: italic; }
+  .reset-hour-controls { display: flex; align-items: center; gap: 10px; }
+  .reset-hour-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border-mid);
+    background: transparent; color: var(--text-muted); font-size: 16px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-family: inherit; transition: all 0.15s;
+  }
+  .reset-hour-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .reset-hour-val { font-size: 14px; color: var(--text); min-width: 52px; text-align: center; font-family: 'Georgia', serif; }
+
+  .preset-btn {
+    flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border-mid);
+    background: transparent; color: var(--text-muted); font-size: 13px;
+    font-family: 'Georgia', serif; font-style: italic; cursor: pointer; transition: all 0.15s;
+  }
+  .preset-btn:hover { border-color: var(--accent); color: var(--text); }
+  .preset-btn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+  .settings-btns { display: flex; gap: 10px; margin-top: 20px; }
+  .settings-save {
+    flex: 1; padding: 11px; border-radius: 8px; border: 1px solid var(--accent);
+    background: var(--accent-faint); color: var(--accent); font-size: 12px;
+    letter-spacing: 0.08em; cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .settings-save:hover { background: var(--accent-soft); }
+  .settings-cancel {
+    flex: 1; padding: 11px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-muted); font-size: 12px;
+    letter-spacing: 0.08em; cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .settings-cancel:hover { border-color: var(--border-mid); color: var(--text); }
+
+  .stat-number, .ep-stat-num {
+    cursor: default; user-select: none; position: relative;
+    transition: color 0.2s, opacity 0.2s;
+  }
+  .stat-number.holding, .ep-stat-num.holding { opacity: 0.6; }
+  .stat-number-progress, .ep-stat-num-progress {
+    position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
+    height: 1px; background: var(--accent); width: 0%; border-radius: 1px;
+  }
+
+  /* DEV EDIT MODAL */
+  .dev-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65); z-index: 1000;
+    align-items: center; justify-content: center; padding: 1.5rem;
+  }
+  .dev-modal-overlay.open { display: flex; }
+  .dev-modal {
+    background: var(--surface); border: 1px solid var(--border-mid);
+    border-radius: 14px; padding: 24px 20px; width: 100%; max-width: 340px;
+  }
+  .dev-modal-title {
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 20px; text-align: center;
+  }
+  .dev-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+  .dev-field label { font-size: 11px; color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase; }
+  .dev-field input {
+    background: var(--bg); border: 1px solid var(--border-mid); border-radius: 8px;
+    color: var(--text); font-size: 22px; font-family: 'Georgia', serif;
+    padding: 8px 12px; text-align: center; outline: none; width: 100%;
+    transition: border-color 0.15s;
+  }
+  .dev-field input:focus { border-color: var(--accent); }
+  .dev-modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+  .dev-modal-save {
+    flex: 1; padding: 11px; border-radius: 8px; border: 1px solid var(--accent);
+    background: var(--accent-faint); color: var(--accent); font-size: 12px;
+    letter-spacing: 0.08em; cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .dev-modal-save:hover { background: var(--accent-soft); }
+  .dev-modal-cancel {
+    flex: 1; padding: 11px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-muted); font-size: 12px;
+    letter-spacing: 0.08em; cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .dev-modal-cancel:hover { border-color: var(--border-mid); color: var(--text); }
+
+  #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999; display: none; }
+  .fade-in { animation: fadeUp 0.5s ease forwards; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
+</head>
+<body>
+<canvas id="confetti-canvas"></canvas>
+
+<!-- GLOBAL TOP BAR -->
+<div id="global-top-bar">
+  <div class="wordmark" id="wordmark">vision<div class="wordmark-progress" id="wm-progress"></div></div>
+  <div class="top-icons">
+    <div class="icon-btn" onclick="openSettings()" title="settings">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="7" cy="7" r="2" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.636 2.636l1.06 1.06M10.304 10.304l1.06 1.06M11.364 2.636l-1.06 1.06M3.696 10.304l-1.06 1.06" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="icon-btn palette" onclick="toggleSwatches()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.4"/>
+        <circle cx="4.5" cy="5.5" r="1" fill="currentColor"/>
+        <circle cx="7" cy="4" r="1" fill="currentColor"/>
+        <circle cx="9.5" cy="5.5" r="1" fill="currentColor"/>
+        <circle cx="9" cy="8.5" r="1" fill="currentColor"/>
+        <circle cx="5" cy="8.5" r="1" fill="currentColor"/>
+      </svg>
+    </div>
+    <div class="swatches" id="swatches">
+      <div class="swatch" data-theme="lavender" style="background:#a8a4e8;" onclick="setTheme('lavender',this)"></div>
+      <div class="swatch" data-theme="stilllake" style="background:#5a9ee8;" onclick="setTheme('stilllake',this)"></div>
+      <div class="swatch" data-theme="warmsun" style="background:#ffaa72;" onclick="setTheme('warmsun',this)"></div>
+      <div class="swatch" data-theme="flamingo" style="background:#ff98de;" onclick="setTheme('flamingo',this)"></div>
+      <div class="swatch" data-theme="quietdusk" style="background:#8a97ac;" onclick="setTheme('quietdusk',this)"></div>
+      <div class="swatch" data-theme="softearth" style="background:#a87e60;" onclick="setTheme('softearth',this)"></div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+
+  <div id="page-dash" class="page active fade-in">
+    <div class="section-title">today's arc</div>
+    <div class="stages" id="stages-list"></div>
+    <div class="divider"></div>
+    <div class="emergency-label">in case of emergency, break glass</div>
+    <div class="emergency-row">
+      <button class="emergency-btn" onclick="startFlow('A')">
+        <span class="emergency-btn-title">Rage Chess</span>
+        <span class="emergency-btn-sub">exit the spiral</span>
+      </button>
+      <button class="emergency-btn" onclick="startFlow('B')">
+        <span class="emergency-btn-title">Bed Drift</span>
+        <span class="emergency-btn-sub">re-enter the day</span>
+      </button>
+    </div>
+    <button class="day-done-btn" id="day-done-btn" onclick="endDay()">the day is done →</button>
+  </div>
+
+  <!-- STATS -->
+  <div id="page-stats" class="page fade-in">
+    <div class="stats-header">what you've earned stays.</div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-number" id="stat-partial">0<div class="stat-number-progress" id="prog-partial"></div></div>
+        <div class="stat-label">partial win days</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="stat-total">0<div class="stat-number-progress" id="prog-total"></div></div>
+        <div class="stat-label">full win days</div>
+      </div>
+    </div>
+    <div class="ep-stat-row">
+      <div class="ep-stat">
+        <div class="ep-stat-num" id="stat-ep-a">0<div class="stat-number-progress" id="prog-ep-a"></div></div>
+        <div class="ep-stat-label">times exited<br>the spiral</div>
+      </div>
+      <div class="ep-stat">
+        <div class="ep-stat-num" id="stat-ep-b">0<div class="stat-number-progress" id="prog-ep-b"></div></div>
+        <div class="ep-stat-label">times re-entered<br>the day</div>
+      </div>
+    </div>
+    <div class="stats-locked-note" id="stats-locked-note"></div>
+  </div>
+
+  <!-- FLOW A — RAGE CHESS -->
+  <div id="page-flow-a" class="flow-page">
+    <div class="flow-header">We are exiting the spiral.</div>
+    <div class="flow-card">
+      <div class="flow-step-num" id="flow-a-num"></div>
+      <div class="flow-step-text" id="flow-a-text"></div>
+      <div class="flow-timer-wrap" id="flow-a-timer-wrap">
+        <div class="flow-timer-display" id="flow-a-clock">5:00</div>
+        <div class="flow-timer-bar-wrap"><div class="flow-timer-bar" id="flow-a-bar"></div></div>
+        <button class="flow-timer-btn" id="flow-a-timer-btn">start timer</button>
+      </div>
+    </div>
+    <button class="flow-next-btn" id="flow-a-next" onclick="advanceFlow('A')">continue →</button>
+    <button class="flow-cancel" onclick="cancelFlow()">exit protocol</button>
+  </div>
+
+  <!-- FLOW B — BED DRIFT -->
+  <div id="page-flow-b" class="flow-page">
+    <div class="flow-header">Re-enter the day.</div>
+    <div class="flow-card">
+      <div class="flow-step-num" id="flow-b-num"></div>
+      <div class="flow-step-text" id="flow-b-text"></div>
+      <div class="flow-timer-wrap" id="flow-b-timer-wrap">
+        <div class="flow-timer-display" id="flow-b-clock">2:00</div>
+        <div class="flow-timer-bar-wrap"><div class="flow-timer-bar" id="flow-b-bar"></div></div>
+        <button class="flow-timer-btn" id="flow-b-timer-btn">start timer</button>
+      </div>
+    </div>
+    <button class="flow-next-btn" id="flow-b-next" onclick="advanceFlow('B')">continue →</button>
+    <button class="flow-cancel" onclick="cancelFlow()">exit protocol</button>
+  </div>
+
+</div>
+
+<!-- DEV EDIT MODAL -->
+<div class="dev-modal-overlay" id="dev-modal-overlay">
+  <div class="dev-modal">
+    <div class="dev-modal-title">dev · edit stats</div>
+    <div class="dev-field">
+      <label>partial win days</label>
+      <input type="number" id="dev-partial" min="0">
+    </div>
+    <div class="dev-field">
+      <label>full win days</label>
+      <input type="number" id="dev-total" min="0">
+    </div>
+    <div class="dev-field">
+      <label>times exited the spiral</label>
+      <input type="number" id="dev-ep-a" min="0">
+    </div>
+    <div class="dev-field">
+      <label>times re-entered the day</label>
+      <input type="number" id="dev-ep-b" min="0">
+    </div>
+    <div class="dev-modal-btns">
+      <button class="dev-modal-cancel" onclick="closeDevModal()">cancel</button>
+      <button class="dev-modal-save" onclick="saveDevStats()">save</button>
+    </div>
+  </div>
+</div>
+<!-- SETTINGS MODAL -->
+<div class="settings-overlay" id="settings-overlay">
+  <div class="settings-modal">
+    <div class="settings-title">settings</div>
+
+    <div class="settings-section-label">season</div>
+    <div class="settings-section-sub">switching seasons reloads the app with the new stage set.</div>
+    <div id="settings-preset-btns" style="display:flex;gap:8px;margin-bottom:4px;"></div>
+
+    <div class="settings-section-label">partial win — required stages</div>
+    <div class="settings-section-sub">a partial win day requires completing these stages.</div>
+    <div id="settings-stage-toggles"></div>
+
+    <div class="settings-section-label">day reset time</div>
+    <div class="settings-section-sub">the day resets at this hour, not midnight — useful if your day runs late.</div>
+    <div class="reset-hour-row">
+      <div class="reset-hour-label">reset at</div>
+      <div class="reset-hour-controls">
+        <button class="reset-hour-btn" onclick="adjustResetHour(-1)">−</button>
+        <div class="reset-hour-val" id="reset-hour-display">12:00 am</div>
+        <button class="reset-hour-btn" onclick="adjustResetHour(1)">+</button>
+      </div>
+    </div>
+
+    <div class="settings-btns">
+      <button class="settings-cancel" onclick="closeSettings()">cancel</button>
+      <button class="settings-save" onclick="saveSettings()">save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PRESETS = {
+  rebuild: {
+    label: 'Rebuild',
+    stages: [
+      { id:'activation',  name:'Activation',      emphasis:false },
+      { id:'immersion',   name:'Immersion',        emphasis:true  },
+      { id:'transition',  name:'Transition Reset', emphasis:false },
+      { id:'recovery',    name:'Recovery',         emphasis:true  },
+      { id:'reengage',    name:'Re-Engage',        emphasis:false },
+      { id:'closure',     name:'Closure',          emphasis:true  },
+    ],
+    partialDefault: ['immersion','recovery','closure'],
+  },
+  grind: {
+    label: 'Grind',
+    stages: [
+      { id:'activate', name:'Activate', emphasis:true  },
+      { id:'grind',    name:'Grind',    emphasis:true  },
+      { id:'closure',  name:'Closure',  emphasis:true  },
+    ],
+    partialDefault: ['activate','grind','closure'],
+  },
+};
+
+const ACTIVE_PRESET_KEY = 'vision_active_preset';
+const activePresetName  = localStorage.getItem(ACTIVE_PRESET_KEY) || 'rebuild';
+const PRESET            = PRESETS[activePresetName] || PRESETS.rebuild;
+const STAGES            = PRESET.stages;
+
+const FLOWS = {
+  A:[
+    { text:"Notice that you're in it — and walk away from whatever you're doing. You don't need to fix it right now. You just need to stop feeding it.", timer:false },
+    { text:"Go outside. No destination, no phone. Let your nervous system remember there's a world that isn't the one that triggered you.", timer:true, seconds:300, label:'5:00' },
+    { text:"When you're back: a word puzzle, coloring, something that requires just enough focus to crowd out the spiral. This is not procrastination. This is maintenance.", timer:false },
+    { text:"The system got overloaded. That's all. Not a character flaw — a system responding to too much input. You can return when you're ready.", timer:false },
+  ],
+  B:[
+    { text:"Both feet on the floor. Feel the weight of them. You are here, in a body, and the day is still yours to shape. Start there.", timer:false },
+    { text:"Drink water. A full glass, slowly. Not because it fixes anything — because it's the first act of taking care of yourself today, and that counts.", timer:false },
+    { text:"One small task, or two minutes outside. Either one breaks the inertia. You only need to move once.", timer:true, seconds:120, label:'2:00' },
+    { text:"Reassess with a clear mind. The day is not lost. The question isn't 'why did I drift' — it's 'what do I want to do with what's left?'", timer:false },
+  ]
+};
+
+const THEMES = {
+  lavender:  { accent:'#a8a4e8', deep:'#8e89d0', bg:'#272740', surface:'#2e2e4a' },
+  stilllake: { accent:'#5a9ee8', deep:'#3d84d4', bg:'#1a2640', surface:'#1e2e4a' },
+  warmsun:   { accent:'#ffaa72', deep:'#e88a4a', bg:'#38220e', surface:'#422814' },
+  flamingo:  { accent:'#ff98de', deep:'#e874c8', bg:'#38102e', surface:'#421436' },
+  quietdusk: { accent:'#8a97ac', deep:'#6a7888', bg:'#1e2430', surface:'#242a38' },
+  softearth: { accent:'#a87e60', deep:'#886040', bg:'#2c1e12', surface:'#342418' },
+};
+
+const HOLD_DURATION = 3000;
+const noSleep = new NoSleep();
+let flowStep={A:0,B:0};
+let flowTimers={a:null,b:null};
+let todayDone=[];
+let dayLocked=false;
+let stats=JSON.parse(localStorage.getItem('vision_stats')||'{"partial":0,"total":0,"epA":0,"epB":0}');
+
+// settings state — fall back to active preset's defaults
+let partialIds = JSON.parse(localStorage.getItem('vision_partial_ids') || 'null') || [...PRESET.partialDefault];
+let resetHour  = parseInt(localStorage.getItem('vision_reset_hour')||'0'); // 0 = midnight
+let _settingsPartialIds = [...partialIds];
+let _settingsResetHour  = resetHour;
+
+// ---- LONG PRESS RESET ----
+function initLongPress(el, progressEl, callback) {
+  let holdTimer=null, animFrame=null, startTime=null;
+
+  function startHold(e) {
+    e.preventDefault();
+    startTime = Date.now();
+    el.classList.add('holding');
+    function animate() {
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min(elapsed / HOLD_DURATION * 100, 100);
+      progressEl.style.width = pct + '%';
+      if (elapsed < HOLD_DURATION) {
+        animFrame = requestAnimationFrame(animate);
+      } else {
+        endHold();
+        if(callback) callback();
+      }
+    }
+    animFrame = requestAnimationFrame(animate);
+  }
+
+  function endHold() {
+    el.classList.remove('holding');
+    if (animFrame) cancelAnimationFrame(animFrame);
+    progressEl.style.width = '0%';
+    startTime = null;
+  }
+
+  el.addEventListener('mousedown', startHold);
+  el.addEventListener('touchstart', startHold, { passive:false });
+  el.addEventListener('mouseup', endHold);
+  el.addEventListener('mouseleave', endHold);
+  el.addEventListener('touchend', endHold);
+  el.addEventListener('touchcancel', endHold);
+}
+
+function openDevModal(focusField) {
+  document.getElementById('dev-partial').value = stats.partial;
+  document.getElementById('dev-total').value = stats.total;
+  document.getElementById('dev-ep-a').value = stats.epA;
+  document.getElementById('dev-ep-b').value = stats.epB;
+  document.getElementById('dev-modal-overlay').classList.add('open');
+  if(focusField) setTimeout(()=>{ const el=document.getElementById(focusField); if(el){el.focus();el.select();} }, 50);
+}
+
+function closeDevModal() {
+  document.getElementById('dev-modal-overlay').classList.remove('open');
+}
+
+function saveDevStats() {
+  const partial = parseInt(document.getElementById('dev-partial').value) || 0;
+  const total   = parseInt(document.getElementById('dev-total').value)   || 0;
+  const epA     = parseInt(document.getElementById('dev-ep-a').value)    || 0;
+  const epB     = parseInt(document.getElementById('dev-ep-b').value)    || 0;
+  stats = { partial, total, epA, epB };
+  localStorage.setItem('vision_stats', JSON.stringify(stats));
+  renderStats();
+  closeDevModal();
+}
+
+function devReset() {
+  todayDone = [];
+  dayLocked = false;
+  localStorage.setItem('vision_today', '[]');
+  localStorage.setItem('vision_locked', 'false');
+  localStorage.setItem('vision_lastday', new Date().toDateString());
+  renderStages();
+  updateDayDoneBtn();
+  showPage('dash');
+}
+
+// ---- INIT ----
+function getResetDateString(){
+  // treat the day as starting at resetHour (e.g. 3 = 3am)
+  const now = new Date();
+  if(now.getHours() < resetHour) now.setDate(now.getDate()-1);
+  return now.toDateString();
+}
+
+function init(){
+  const today = getResetDateString();
+  const lastDay = localStorage.getItem('vision_lastday')||'';
+  if(lastDay !== today){
+    todayDone=[]; dayLocked=false;
+    localStorage.setItem('vision_lastday', today);
+    localStorage.setItem('vision_today','[]');
+    localStorage.setItem('vision_locked','false');
+  } else {
+    todayDone=JSON.parse(localStorage.getItem('vision_today')||'[]');
+    dayLocked=localStorage.getItem('vision_locked')==='true';
+  }
+  applyStoredTheme();
+  renderStages();
+  updateDayDoneBtn();
+  if(dayLocked) showPage('stats');
+
+  initLongPress(document.getElementById('wordmark'), document.getElementById('wm-progress'), devReset);
+
+  // stat number long-presses → open modal focused on that field
+  initLongPress(document.getElementById('stat-partial'), document.getElementById('prog-partial'), ()=>openDevModal('dev-partial'));
+  initLongPress(document.getElementById('stat-total'),   document.getElementById('prog-total'),   ()=>openDevModal('dev-total'));
+  initLongPress(document.getElementById('stat-ep-a'),    document.getElementById('prog-ep-a'),    ()=>openDevModal('dev-ep-a'));
+  initLongPress(document.getElementById('stat-ep-b'),    document.getElementById('prog-ep-b'),    ()=>openDevModal('dev-ep-b'));
+}
+
+function showPage(name){
+  document.querySelectorAll('.page,.flow-page').forEach(p=>p.classList.remove('active'));
+  if(name==='dash') document.getElementById('page-dash').classList.add('active');
+  else if(name==='stats'){renderStats();document.getElementById('page-stats').classList.add('active');}
+  else if(name==='flow-a') document.getElementById('page-flow-a').classList.add('active');
+  else if(name==='flow-b') document.getElementById('page-flow-b').classList.add('active');
+}
+
+function renderStages(){
+  document.getElementById('stages-list').innerHTML=STAGES.map(s=>{
+    const done=todayDone.includes(s.id);
+    const isPartial=partialIds.includes(s.id);
+    const ind=isPartial?`<div class="stage-ring"></div>`:`<div class="stage-dot"></div>`;
+    const cl='stage-row'+(done?' done':'')+(dayLocked?' locked':'');
+    const handler=dayLocked?'':`onclick="toggleStage('${s.id}',this)"`;
+    return`<div class="${cl}" ${handler}>${ind}<div class="stage-text"><div class="stage-name">${s.name}</div></div></div>`;
+  }).join('');
+}
+
+function toggleStage(id,row){
+  if(dayLocked)return;
+  if(todayDone.includes(id)) todayDone=todayDone.filter(x=>x!==id);
+  else todayDone.push(id);
+  localStorage.setItem('vision_today',JSON.stringify(todayDone));
+  row.classList.toggle('done',todayDone.includes(id));
+  updateDayDoneBtn();
+}
+
+function updateDayDoneBtn(){
+  const btn=document.getElementById('day-done-btn');
+  if(!btn)return;
+  if(dayLocked){btn.style.display='none';return;}
+  btn.style.display='';
+  btn.classList.toggle('ready',todayDone.length>0);
+}
+
+function endDay(){
+  if(dayLocked)return;
+  const allIds=STAGES.map(s=>s.id);
+  const partial=partialIds.every(id=>todayDone.includes(id));
+  const full=allIds.every(id=>todayDone.includes(id));
+  if(full){stats.total++;}
+  else if(partial){stats.partial++;}
+  localStorage.setItem('vision_stats',JSON.stringify(stats));
+  dayLocked=true;
+  localStorage.setItem('vision_locked','true');
+  showPage('stats');
+  if(partial||full) setTimeout(()=>{fireConfetti();popConfetti();},200);
+}
+
+function startFlow(letter){
+  flowStep[letter]=0;
+  renderFlow(letter);
+  showPage('flow-'+letter.toLowerCase());
+  noSleep.enable();
+}
+
+function renderFlow(letter){
+  const l=letter.toLowerCase();
+  const steps=FLOWS[letter];
+  const i=flowStep[letter];
+  const step=steps[i];
+  const isLast=i===steps.length-1;
+  document.getElementById('flow-'+l+'-num').textContent='step '+(i+1)+' of '+steps.length;
+  document.getElementById('flow-'+l+'-text').textContent=step.text;
+  document.getElementById('flow-'+l+'-next').textContent=isLast?'done':'continue →';
+  const tw=document.getElementById('flow-'+l+'-timer-wrap');
+  if(step.timer){
+    tw.style.display='flex';
+    document.getElementById('flow-'+l+'-clock').textContent=step.label;
+    document.getElementById('flow-'+l+'-bar').style.width='0%';
+    const tbtn=document.getElementById('flow-'+l+'-timer-btn');
+    tbtn.textContent='start timer';
+    tbtn.onclick=()=>startFlowTimer(l,step.seconds);
+    if(flowTimers[l]){clearInterval(flowTimers[l]);flowTimers[l]=null;}
+  } else {
+    tw.style.display='none';
+    if(flowTimers[l]){clearInterval(flowTimers[l]);flowTimers[l]=null;}
+  }
+  playChime();
+}
+
+function startFlowTimer(l,total){
+  if(flowTimers[l])return;
+  let rem=total;
+  const tbtn=document.getElementById('flow-'+l+'-timer-btn');
+  const clock=document.getElementById('flow-'+l+'-clock');
+  const bar=document.getElementById('flow-'+l+'-bar');
+  tbtn.textContent='running…';tbtn.onclick=null;
+  function tick(){
+    const m=Math.floor(rem/60),s=rem%60;
+    clock.textContent=m+':'+(s<10?'0':'')+s;
+    bar.style.width=((total-rem)/total*100)+'%';
+    if(rem<=0){clearInterval(flowTimers[l]);flowTimers[l]=null;clock.textContent='done';bar.style.width='100%';playChime();return;}
+    rem--;
+  }
+  tick();
+  flowTimers[l]=setInterval(tick,1000);
+}
+
+function advanceFlow(letter){
+  const l=letter.toLowerCase();
+  if(flowTimers[l]){clearInterval(flowTimers[l]);flowTimers[l]=null;}
+  if(flowStep[letter]>=FLOWS[letter].length-1){
+    if(letter==='A')stats.epA++;else stats.epB++;
+    localStorage.setItem('vision_stats',JSON.stringify(stats));
+    noSleep.disable();
+    showPage('dash');
+    setTimeout(()=>{fireConfetti();popConfetti();},150);
+  } else {
+    flowStep[letter]++;
+    renderFlow(letter);
+  }
+}
+
+function cancelFlow(){
+  ['a','b'].forEach(l=>{if(flowTimers[l]){clearInterval(flowTimers[l]);flowTimers[l]=null;}});
+  noSleep.disable();
+  showPage('dash');
+}
+
+function playChime(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const osc=ctx.createOscillator(),gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.frequency.value=528;osc.type='sine';
+    gain.gain.setValueAtTime(0.22,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+1.4);
+    osc.start();osc.stop(ctx.currentTime+1.4);
+  }catch(e){}
+}
+
+function popConfetti(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const now=ctx.currentTime;
+
+    // noise burst — the "pop" body
+    const bufLen=ctx.sampleRate*0.08;
+    const buf=ctx.createBuffer(1,bufLen,ctx.sampleRate);
+    const data=buf.getChannelData(0);
+    for(let i=0;i<bufLen;i++) data[i]=(Math.random()*2-1);
+    const noise=ctx.createBufferSource();
+    noise.buffer=buf;
+    const noiseGain=ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.55,now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001,now+0.12);
+    noise.connect(noiseGain);noiseGain.connect(ctx.destination);
+    noise.start(now);noise.stop(now+0.12);
+
+    // pitch drop — the "cork" whistle tail
+    const osc=ctx.createOscillator();
+    const oscGain=ctx.createGain();
+    osc.type='sine';
+    osc.frequency.setValueAtTime(900,now);
+    osc.frequency.exponentialRampToValueAtTime(220,now+0.18);
+    oscGain.gain.setValueAtTime(0.18,now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001,now+0.22);
+    osc.connect(oscGain);oscGain.connect(ctx.destination);
+    osc.start(now);osc.stop(now+0.22);
+  }catch(e){}
+}
+
+function fireConfetti(){
+  const canvas=document.getElementById('confetti-canvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  canvas.style.display='block';
+  const accent=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  const pieces=Array.from({length:90},()=>({
+    x:Math.random()*canvas.width,y:-10,r:Math.random()*4+2,
+    c:[accent,'#e8e6f0','#ffffff'][Math.floor(Math.random()*3)],
+    vx:(Math.random()-.5)*3.5,vy:Math.random()*3+1.5,life:1
+  }));
+  let frame;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive=false;
+    pieces.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.life-=0.011;
+      if(p.life>0)alive=true;
+      ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.c;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+    });
+    ctx.globalAlpha=1;
+    if(alive)frame=requestAnimationFrame(draw);
+    else{canvas.style.display='none';cancelAnimationFrame(frame);}
+  }
+  draw();
+}
+
+function setStatNum(id, val) {
+  const el = document.getElementById(id);
+  // update only the first text node, preserving child elements (progress bar)
+  const existing = Array.from(el.childNodes).find(n => n.nodeType === 3);
+  if (existing) existing.textContent = val;
+  else el.insertBefore(document.createTextNode(val), el.firstChild);
+}
+
+function renderStats(){
+  setStatNum('stat-partial', stats.partial);
+  setStatNum('stat-total',   stats.total);
+  setStatNum('stat-ep-a',    stats.epA);
+  setStatNum('stat-ep-b',    stats.epB);
+  document.getElementById('stats-locked-note').textContent=dayLocked?'today is sealed. see you tomorrow.':'';
+}
+
+function toggleSwatches(){document.getElementById('swatches').classList.toggle('open');}
+
+function setTheme(name,el){
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  applyTheme(name);
+  localStorage.setItem('vision_theme',name);
+  document.getElementById('swatches').classList.remove('open');
+}
+
+function applyTheme(name){
+  const t=THEMES[name]||THEMES.lavender;
+  const hex=t.accent;
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  const root=document.documentElement;
+  root.style.setProperty('--accent',t.accent);
+  root.style.setProperty('--accent-deep',t.deep);
+  root.style.setProperty('--accent-soft',`rgba(${r},${g},${b},0.12)`);
+  root.style.setProperty('--accent-faint',`rgba(${r},${g},${b},0.06)`);
+  root.style.setProperty('--border',`rgba(${r},${g},${b},0.15)`);
+  root.style.setProperty('--border-mid',`rgba(${r},${g},${b},0.25)`);
+  root.style.setProperty('--ep-border',`rgba(${r},${g},${b},0.22)`);
+  root.style.setProperty('--ep-bg',`rgba(${r},${g},${b},0.05)`);
+  root.style.setProperty('--ep-text',`rgba(${r},${g},${b},0.90)`);
+  root.style.setProperty('--ep-sub',`rgba(${r},${g},${b},0.65)`);
+  root.style.setProperty('--bg',t.bg);
+  root.style.setProperty('--surface',t.surface);
+  document.body.style.background=t.bg;
+}
+
+function applyStoredTheme(){
+  const saved=localStorage.getItem('vision_theme')||'lavender';
+  applyTheme(saved);
+  document.querySelectorAll('.swatch').forEach(s=>{
+    s.classList.toggle('active',s.dataset.theme===saved);
+  });
+}
+
+// ---- SETTINGS ----
+function formatResetHour(h){
+  if(h===0) return '12:00 am';
+  if(h<12)  return h+':00 am';
+  if(h===12) return '12:00 pm';
+  return (h-12)+':00 pm';
+}
+
+function openSettings(){
+  _settingsPartialIds = [...partialIds];
+  _settingsResetHour  = resetHour;
+
+  // render preset buttons
+  const presetContainer = document.getElementById('settings-preset-btns');
+  presetContainer.innerHTML = Object.entries(PRESETS).map(([key,p])=>`
+    <button
+      class="preset-btn ${key===activePresetName?'active':''}"
+      onclick="switchPreset('${key}')"
+    >${p.label}</button>
+  `).join('');
+
+  // render stage toggles for current preset
+  const container = document.getElementById('settings-stage-toggles');
+  container.innerHTML = STAGES.map(s=>`
+    <div class="stage-toggle-row">
+      <span class="stage-toggle-name">${s.name}</span>
+      <button class="toggle-switch ${_settingsPartialIds.includes(s.id)?'on':''}"
+        id="stoggle-${s.id}"
+        onclick="togglePartialStage('${s.id}')"></button>
+    </div>
+  `).join('');
+  document.getElementById('reset-hour-display').textContent = formatResetHour(_settingsResetHour);
+  document.getElementById('settings-overlay').classList.add('open');
+}
+
+function switchPreset(key){
+  if(key === activePresetName) return;
+  localStorage.setItem(ACTIVE_PRESET_KEY, key);
+  // clear today's done so new stages start fresh
+  localStorage.setItem('vision_today','[]');
+  localStorage.setItem('vision_locked','false');
+  localStorage.removeItem('vision_partial_ids');
+  location.reload();
+}
+
+function closeSettings(){
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+
+function togglePartialStage(id){
+  const btn = document.getElementById('stoggle-'+id);
+  if(_settingsPartialIds.includes(id)){
+    _settingsPartialIds = _settingsPartialIds.filter(x=>x!==id);
+    btn.classList.remove('on');
+  } else {
+    _settingsPartialIds.push(id);
+    btn.classList.add('on');
+  }
+}
+
+function adjustResetHour(delta){
+  _settingsResetHour = Math.max(0, Math.min(6, _settingsResetHour + delta));
+  document.getElementById('reset-hour-display').textContent = formatResetHour(_settingsResetHour);
+}
+
+function saveSettings(){
+  partialIds = [..._settingsPartialIds];
+  resetHour  = _settingsResetHour;
+  localStorage.setItem('vision_partial_ids', JSON.stringify(partialIds));
+  localStorage.setItem('vision_reset_hour',  String(resetHour));
+  renderStages();
+  closeSettings();
+}
+
+init();
+</script>
+</body>
+</html>
